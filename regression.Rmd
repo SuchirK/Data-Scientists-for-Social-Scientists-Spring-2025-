@@ -1,0 +1,188 @@
+---
+title: "Regression in Political Science Using R"
+subtitle: "Simple, Multiple, and Multivariate Regression"
+author: "Suchir Kalra"
+output:
+  slidy_presentation: default
+  ioslides_presentation: default
+---
+
+# 🗳️ Regression & Voting Behavior
+
+This presentation walks through:
+
+- Simple Linear Regression
+- Multiple Linear Regression
+- Multivariate Regression
+- Understanding Controls & Coefficients
+- We are going to try to examine the relationship between Literacy Rate & Voter Turnout
+
+```{r include=FALSE}
+library (modelsummary)
+```
+## Creating a random sample dataset (Don't trust this data! It's self created)
+
+```{r}
+
+# 🔧 Simulating Political Science Data in R (This creates a random dataset!)
+
+```{r, message=FALSE, warning=FALSE}
+
+
+set.seed(123)
+
+# Simulate panel data: 10 districts over 5 years
+districts <- paste0("D", 1:10)
+years <- 2015:2019
+panel_data <- expand.grid(district = districts, year = years)
+
+# Add variables
+panel_data$literacy_rate <- round(runif(nrow(panel_data), 60, 95), 1)
+panel_data$urbanization <- round(runif(nrow(panel_data), 30, 90), 1)
+panel_data$median_income <- round(rnorm(nrow(panel_data), 50000, 10000), 0)
+panel_data$internet_access <- round(runif(nrow(panel_data), 20, 80), 1)
+
+# Generate outcome with district and year effects
+district_effects <- rnorm(length(districts), 0, 5)
+names(district_effects) <- districts
+
+year_effects <- rnorm(length(years), 0, 2)
+names(year_effects) <- years
+
+panel_data$voter_turnout <- 40 +
+  0.2 * panel_data$literacy_rate +
+  0.05 * panel_data$internet_access +
+  district_effects[panel_data$district] +
+  year_effects[as.character(panel_data$year)] +
+  rnorm(nrow(panel_data), 0, 3)
+
+head(panel_data)
+
+```
+
+## Simple Linear Regression Model 
+
+```{r simple model}
+model_simple <- lm(voter_turnout ~ literacy_rate, data = panel_data)
+
+print(summary(model_simple))
+
+modelsummary(model_simple,
+             gof_omit = "AIC|BIC|Log.Lik|F",  # hide extras for cleaner table
+             stars = TRUE,
+             output = "markdown")
+```
+## Visualising Simple Regression
+
+```{r visualising simple regression}
+
+plot_simple <- plot(panel_data$literacy_rate, panel_data$voter_turnout,
+     xlab = "Literacy Rate (%)", ylab = "Voter Turnout (%)",
+     main = "Simple Linear Regression")
+abline(model_simple, col = "blue", lwd = 2)
+
+```
+## Adding Controls to linear regression
+
+```{r adding controls to the linear regression}
+
+model_controls <- lm(voter_turnout ~ literacy_rate + urbanization + median_income + internet_access,
+                     data = panel_data)
+
+modelsummary(model_controls,
+             gof_omit = "AIC|BIC|Log.Lik|F",  # hide extras for cleaner table
+             stars = TRUE,
+             output = "markdown")
+```
+
+After controlling for urbanization, income, internet access,
+the coefficient of literacy drops — because part of its apparent effect was confounded.
+
+What happens to the R2 Score? 
+
+R² will always increase when you add more variables — but that doesn’t always mean your model is better. That’s why we check Adjusted R² too. Good for understanding overall model fit but can be inflated by adding more variables, regardless of their true impact.
+
+
+## Multivariate Regression
+
+This fits two separate linear models internally: voter_turnout ~ literacy_rate + ... & partyA_share ~ literacy_rate + ...
+
+```{r multivariate regression}
+
+Y <- cbind(panel_data$voter_turnout, panel_data$partyA_share)
+X <- as.matrix(panel_data[, c("literacy_rate", "urbanization", "median_income", "internet_access")])
+
+model_multi <- lm(Y ~ X)
+summary(model_multi)
+
+```
+If your outcomes are correlated (e.g., turnout & vote share), modeling them together gives you more accurate standard errors.
+
+# 🧱 Why District and Year Fixed Effects?
+
+### ✅ District Fixed Effects
+
+Districts differ in many **time-invariant** ways that may affect voter turnout:
+
+- Historical political culture
+- Local party strength
+- Literacy history
+- Urban/rural composition
+- Caste/class balance
+
+We may not observe all of these factors directly. But if they **don’t change much over time**, we can **control for them** using _district fixed effects_.
+
+This helps isolate the effect of variables like literacy or internet access **within each district over time**.
+
+### 🕒 Year Fixed Effects
+
+Election years bring **common national shocks**:
+
+- National party wave (e.g., Modi wave in 2014)
+- Economic events (e.g., demonetization)
+- Election Commission policies
+- COVID-related disruptions
+
+Year fixed effects soak up **anything that affects all districts equally in a given year**, so we don't mistakenly attribute it to our variables of interest.
+
+### 🧪 Together: District + Year FE
+
+By including **both**, our model asks:
+
+> "Within a given district, when literacy or internet access increases, does turnout change — accounting for anything constant about that district and anything affecting all districts that year?"
+
+
+```{r adding fixed effects}
+
+library(lfe)
+
+# No fixed effects
+model_felm_simple <- felm(voter_turnout ~ literacy_rate + internet_access | 0, data = panel_data)
+
+# District fixed effects
+model_felm_district <- felm(voter_turnout ~ literacy_rate + internet_access | district, data = panel_data)
+
+summary(model_felm_district)
+
+# District + year fixed effects
+model_felm_district_year <- felm(voter_turnout ~ literacy_rate + internet_access | district + year, data = panel_data)
+
+summary(model_felm_district_year)
+```
+```{r pretty table}
+
+models <- list(
+  "felm: No FE" = model_felm_simple,
+  "felm: District FE" = model_felm_district,
+  "felm: District + Year FE" = model_felm_district_year
+)
+
+modelsummary(models,
+             statistic = "p.value",
+             stars = TRUE,
+             output = "markdown")
+
+```
+
+
+

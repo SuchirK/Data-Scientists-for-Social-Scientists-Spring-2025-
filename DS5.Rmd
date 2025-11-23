@@ -1,0 +1,100 @@
+---
+title: "DS5"
+author: "Zahir"
+date: "2024-03-28"
+output: html_document
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+```{r imports}
+rm(list = ls())
+
+library(tidyverse)
+library(knitr)
+library(ggthemes)
+library(sf)
+library(ggrepel)
+library(stargazer)
+library(viridis)
+
+setwd('C:/Users/Zahir/Desktop/D3S/Datasets/')
+
+state_shp = st_read('Shp_Files/state.shp')
+
+district_shp = st_read('Shp_Files/district.shp')
+
+pc = read.csv('SHRUG/pc11_pca_clean_pc11dist.csv')
+
+state_key = read.csv('SHRUG/state_key.csv')
+
+```
+
+#### Merging with State Keys
+
+```{r echo=FALSE}
+merged = left_join(state_key, pc, by = 'pc11_state_id')
+```
+
+#### Aggregating Data | creating new variable
+
+```{r }
+state_aggregated = merged %>% 
+  filter(!is.na(pc11_state_id)) %>% 
+  group_by(pc11_state_id, state_name) %>% 
+  summarise(total_population = sum(pc11_pca_tot_p, na.rm = T),
+            total_literacy = sum(pc11_pca_p_lit, na.rm = T)
+  ) %>% 
+  mutate(literacy_rate = total_literacy/total_population) %>% 
+  ungroup()
+
+district_literacy = merged %>% 
+  filter(!is.na(pc11_district_id)) %>% 
+  mutate(literacy_rate = pc11_pca_p_lit/pc11_pca_tot_p)
+```
+
+#### Recoding the district_id variable name in SHP to match PC11 for merging
+
+```{r }
+state_shp$pc11_state_id = as.numeric(state_shp$pc11_s_id)
+district_shp$pc11_state_id = as.numeric(district_shp$pc11_s_id)
+district_shp$pc11_district_id = as.numeric(district_shp$pc11_d_id)
+```
+
+
+```{r }
+dist_shp = left_join(district_shp, district_literacy, by = 'pc11_district_id')
+
+ggplot(dist_shp)+
+  geom_sf(aes(fill = literacy_rate))+
+  theme_map()+
+  scale_fill_gradient(low = '#FFFFFF', high = 'darkgreen')+
+  labs(title = 'Literacy Rate by District', fill = 'Literacy')+
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+```{r}
+shp = left_join(state_shp, state_aggregated, by='pc11_state_id')
+
+ggplot(shp)+
+  geom_sf(aes(fill = literacy_rate))+
+  theme_map()+
+  scale_fill_gradient(low = 'white', high = 'darkgreen')+
+  labs(title = 'Literacy Rate by State', fill = 'Literacy')+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+
+```{r }
+ggplot(shp)+
+  geom_sf(aes(fill = literacy_rate))+
+  theme_map()+
+  scale_color_viridis()+
+  scale_fill_viridis()+
+labs(title = 'Literacy Rate by State', fill = 'Literacy')+
+  theme(plot.title = element_text(hjust = 0.5))
+```

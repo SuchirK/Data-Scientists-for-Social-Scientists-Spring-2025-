@@ -1,0 +1,120 @@
+---
+title: "DS_Session_4"
+output: html_document
+author: Suchir Kalra
+date: "`r Sys.Date()`"
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading the libraries and reading the dataset 
+
+```{r, include=FALSE}
+library(tidyverse)
+library(knitr) # Load the 'knitr' package, which is useful for dynamic report generation in R
+library(ggthemes)# Load the 'ggthemes' package, which provides additional themes for ggplot2 visualizations
+library (ggplot2)
+
+tcpd = read.csv('All_States_GE.csv')
+```
+
+## Looking at what kable() does in the RMarkdown file! 
+
+```{r Delhi Turnout}
+Delhi = tcpd %>% 
+  filter(State_Name == 'Delhi' & Year >= 2004 & Year <=2019 & Poll_No == 0)
+
+Delhi_turnout = Delhi %>% 
+  filter(Position==1)%>%
+  group_by(Year, Constituency_Name)%>%
+  summarise(turnout=mean(Turnout_Percentage,na.rm=T)) %>% 
+  mutate (State = "Delhi")
+
+Delhi_turnout %>% 
+  kable()
+
+```
+
+Now for Haryana Turnout
+
+```{r Haryana Turnout}
+
+Haryana = tcpd %>% 
+  filter(State_Name == 'Haryana' & Year >= 2004 & Year <=2019 & Poll_No == 0)
+
+Haryana_turnout = Haryana %>% 
+  filter(Position==1)%>%
+  group_by(Year, Constituency_Name)%>%
+  summarise(turnout=mean(Turnout_Percentage,na.rm=T)) %>% 
+  mutate (State = "Haryana")
+
+
+Haryana_turnout %>% 
+  kable()
+```
+
+Pretty decent! It makes a table for you that can be used in reports!
+
+## GGPLOT! Of Delhi & Haryana Turnout! BoxPlot!
+
+
+```{r plotting of Delhi & Haryana Turnout , echo=FALSE} 
+
+##If you’re preparing a report or a presentation, you might want to show results (tables, graphs) without cluttering the document with R code. Thus, echo = FALSE -- this makes sure that the RCode is not included in the report)
+
+combined_turnout = bind_rows(Delhi_turnout, Haryana_turnout) 
+
+# Create faceted box plots
+ggplot(combined_turnout, aes(x = factor(Year), y = turnout)) +
+  geom_boxplot() +
+  facet_wrap(~State) +  # Creates separate panels for Delhi & Haryana
+  labs(title = "Voter Turnout in Delhi and Haryana (2004-2019)", 
+       x = "Year", 
+       y = "Turnout Percentage") +
+  theme_minimal()
+
+
+```
+
+# GGPLOT DS 4 Practice
+## Exercise 1: Change in Directly Recruited Women in IAS (1979-2015)
+### Descriptives on Women in IAS 
+
+A single # as above is for title and double ## is for subtitle etc. 
+
+```{r ias-gender-over-time, echo=FALSE, message=FALSE}
+#############################################
+
+ias.profile = read.csv("ias-profile.csv") 
+
+##Aggregate by Year and Allotment and Gender 
+##Tells you total number of directly recruited women every year 
+overtime_gender<-ias.profile%>%
+  filter(Source_of_Recruitment=='Direct Recruitment')%>%
+  filter(Allotment_Year>1979&Allotment_Year<2015)%>%
+  group_by(Allotment_Year,Gender)%>%
+  summarise(Number=n())%>%
+  ungroup()
+#############################################
+###Create a total number of recruited value 
+###Gender M/F both rows and being added 
+overtime_gender<-overtime_gender%>%
+  group_by(Allotment_Year)%>%
+  mutate(Total=sum(Number))%>%
+  ungroup()
+
+#############################################
+#Create Percentage Women Variable 
+overtime_gender$Percentage<-overtime_gender$Number/overtime_gender$Total
+
+#############################################
+#Map the change in % women over time 
+ggplot(overtime_gender, aes(x=Allotment_Year, y=Percentage, fill=Gender )) +
+  geom_line(aes(color=Gender))+ggtitle("Change in Gender Representation in IAS (Direct) Over Time")+geom_point()+xlab("Year")
+```
+
+
+

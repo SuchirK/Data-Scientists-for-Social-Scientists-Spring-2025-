@@ -1,0 +1,123 @@
+---
+title: "DS Session 8: More Geospatial Mapping"
+author: "Suchir Kalra"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  slidy_presentation: default
+  ioslides_presentation: default
+---
+
+## Introduction
+
+- Today we will create maps at district level for PM2.5
+
+
+```{r, load-libraries, results='hide', warning=FALSE, message=FALSE, echo=F}
+rm(list=ls())
+################################################################################
+##load libraries
+################################################################################
+library(tidyverse)
+library(ggplot2)
+library(ggthemes)
+library(ggrepel)
+library(sf)
+```
+
+
+## Look at the district level PM 2.5 
+
+```{r read-pm2.5, out.width = "70%",out.length = "70%", warning=F, message=F, eval=T, echo=T}
+
+pm2.5_district<-read.csv('/Users/suchirkalra/Dropbox/SHRUG DATA/pm25_pc11dist.csv',stringsAsFactors = F)
+
+glimpse(pm2.5_district)
+
+#for 2011 only 
+
+pm2.5_district_2011<-pm2.5_district %>% filter (year==2011)
+
+glimpse(pm2.5_district_2011)
+
+```
+
+
+## Load District Shp Files 
+
+```{r load-shp-district,out.width = "70%",out.length = "70%", warning=F, message=F, eval=T, echo=T, results='hide'}
+# Shape file
+district_shp <- st_read("/Users/suchirkalra/Desktop/D3S Spring 2025/Spring 2025 Datasets/shrug-pc11dist-poly-shp/district.shp")
+
+glimpse(district_shp)
+
+```
+
+## Filter and Merge 
+
+```{r merge-district-2,echo=T,warning=F,out.width = "50%",warning=FALSE, message=FALSE}
+
+##Create a variable for merging 
+district_shp$pc11_district_id<-as.numeric(district_shp$pc11_d_id)
+
+##Anything missing  
+table(district_shp$pc11_district_id%in%pm2.5_district_2011$pc11_district_id)
+
+## Merge
+district_shp<-dplyr::left_join(district_shp, pm2.5_district_2011,by='pc11_district_id')
+
+glimpse(district_shp)
+
+```
+
+
+## District Map PM2.5
+
+```{r map-code,out.width = "70%",out.length = "70%", warning=F, message=F, eval=F, echo=T}
+
+district_shp_pm2.5 <- ggplot(district_shp) +
+  geom_sf(aes(fill = pm25_mean), color = NA) +
+  theme_map() +
+  scale_fill_gradient(low = "green", high = "red") +  # Red color scale
+  scale_color_gradient(low = "green", high = "red") +  # Optional: Adjusting color scale for borders
+  labs(title = "PM2.5 by District (Census 2011)", fill = "pm25_mean") + 
+  theme(plot.title = element_text(hjust = .5))
+
+district_shp_pm2.5
+
+```
+## Find the district with maximum PM 2.5
+
+```{r max region on map, echo=TRUE, message=FALSE, warning=FALSE}
+district_shp %>%
+  st_drop_geometry() %>%
+  arrange(desc(pm25_mean)) %>%
+  slice(1) %>%
+  select(d_name, pm25_mean)
+```
+
+## Highlight the region on the map
+
+
+```{r Highlight the region on the map, echo=TRUE, warning=FALSE}
+max_pm25_value <- max(district_shp$pm25_mean, na.rm = TRUE)
+highlight_district <- district_shp %>%
+  filter(pm25_mean == max_pm25_value)
+
+library(viridis)
+
+# Plot the main map
+district_shp_pm2.5 <- ggplot() +
+  geom_sf(data = district_shp, aes(fill = pm25_mean), color = NA) +
+  geom_sf(data = highlight_district, fill = NA, color = "red", size = 6) +  # Highlight layer
+  scale_fill_viridis() +
+  theme_map() +
+  labs(
+    title = "PM2.5 by District (Census 2011)",
+    fill = "pm25_mean"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# Display the map
+
+```
+

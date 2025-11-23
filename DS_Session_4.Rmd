@@ -1,0 +1,211 @@
+---
+title: "DS_Session_4"
+output: html_document
+author: Suchir Kalra
+date: "`r Sys.Date()`"
+fontsize: 12pt
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading the libraries and reading the dataset 
+
+```{r, include=FALSE}
+library(tidyverse)
+library(knitr) # Load the 'knitr' package, which is useful for dynamic report generation in R
+library(ggthemes)# Load the 'ggthemes' package, which provides additional themes for ggplot2 visualizations
+library (ggplot2)
+
+tcpd = read.csv('All_States_GE.csv')
+```
+
+## Looking at what kable() does in the RMarkdown file! 
+
+```{r Delhi Turnout}
+Delhi = tcpd %>% 
+  filter(State_Name == 'Delhi' & Year >= 2004 & Year <=2019 & Poll_No == 0)
+
+Delhi_turnout = Delhi %>% 
+  filter(Position==1)%>%
+  group_by(Year, Constituency_Name)%>%
+  summarise(turnout=mean(Turnout_Percentage,na.rm=T)) %>% 
+  mutate (State = "Delhi")
+
+Delhi_turnout %>% 
+  kable()
+
+```
+
+Now for Haryana Turnout
+
+```{r Haryana Turnout}
+
+Haryana = tcpd %>% 
+  filter(State_Name == 'Haryana' & Year >= 2004 & Year <=2019 & Poll_No == 0)
+
+Haryana_turnout = Haryana %>% 
+  filter(Position==1)%>%
+  group_by(Year, Constituency_Name)%>%
+  summarise(turnout=mean(Turnout_Percentage,na.rm=T)) %>% 
+  mutate (State = "Haryana")
+
+
+Haryana_turnout %>% 
+  kable()
+```
+
+Pretty decent! It makes a table for you that can be used in reports! Turnout in Delhi has gone up in 2014 elections...
+
+## GGPLOT! Of Delhi & Haryana Turnout! BoxPlot!
+
+
+```{r plotting of Delhi & Haryana Turnout, echo=FALSE} 
+
+##If you’re preparing a report or a presentation, you might want to show results (tables, graphs) without cluttering the document with R code. Thus, echo = FALSE -- this makes sure that the RCode is not included in the report)
+
+combined_turnout = bind_rows(Delhi_turnout, Haryana_turnout) 
+
+# Create faceted box plots
+ggplot(combined_turnout, aes(x = factor(Year), y = turnout)) +
+  geom_boxplot() +
+  facet_wrap(~State) +  # Creates separate panels for Delhi & Haryana
+  labs(title = "Voter Turnout in Delhi and Haryana (2004-2019)", 
+       x = "Year", 
+       y = "Turnout Percentage") +
+  theme_minimal()
+
+
+```
+
+Analysis: Turnout overall higher in Haryana because of door-to-door panchayats pulling out voters to go and vote? 
+
+Conclusion: Can add conclusion or initial observations here..
+
+Note: A single # as below is for title and double ## is for subtitle etc.
+
+# GGPLOT DS 4 Practice
+
+## Exercise 1: Change in Directly Recruited Women in IAS (1979-2015)
+
+### Descriptives on Women in IAS 
+
+
+```{r ias-gender-over-time, echo=FALSE, message=FALSE}
+#############################################
+
+ias.profile = read.csv("ias-profile.csv") 
+
+##Aggregate by Year and Allotment and Gender 
+##Tells you total number of directly recruited women every year 
+overtime_gender<-ias.profile%>%
+  filter(Source_of_Recruitment=="Direct Recruitment")%>%
+  filter(Allotment_Year>1979&Allotment_Year<2015)%>%
+  group_by(Allotment_Year,Gender)%>%
+  summarise(Number=n())%>%
+  ungroup() 
+#############################################
+###Create a total number of recruited value 
+###Gender M/F both rows and being added 
+overtime_gender<-overtime_gender%>%
+  group_by(Allotment_Year)%>%
+  mutate(Total=sum(Number))%>%
+  ungroup()
+
+#############################################
+#Create Percentage Women Variable 
+overtime_gender$Percentage<-(overtime_gender$Number/overtime_gender$Total)*100
+
+#############################################
+#Map the change in % women over time 
+ggplot(overtime_gender, aes(x=Allotment_Year, y=Percentage, fill=Gender )) +
+  geom_line(aes(color=Gender))+ggtitle("Change in Gender Representation in IAS (Direct) Over Time")+geom_point()+xlab("Year")
+```
+
+## Exercise 2: State-wise turnout in the 2019 elections 
+
+
+```{r State_Wise Turnout in the 2019 elections}
+
+State_turnout = tcpd %>% 
+  filter(Year == 2019 & Poll_No == 0 & Position==1) %>% 
+  group_by(State_Name)%>%
+  summarise(turnout=mean(Turnout_Percentage,na.rm=T))
+
+State_turnout %>% 
+  kable()
+```
+## Make a Graph of the State-wise turnout 
+
+```{r State_Wise_Turnout_2019, echo=FALSE, message=FALSE, warning=FALSE}
+
+library(ggplot2)
+
+# Create the bar plot
+ggplot(State_turnout, aes(x = reorder(State_Name, -turnout), y = turnout)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +  # Flip to make it easier to read
+  labs(title = "State-Wise Voter Turnout in 2019 Elections",
+       x = "State",
+       y = "Average Turnout Percentage") +
+  theme_minimal()
+
+#Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```
+
+
+## Now, do it for North, South, West and East India
+
+```{r Clean_State_Names, echo=FALSE, message=FALSE, warning=FALSE}
+# Replace underscores with spaces in the State_Name column
+State_turnout <- State_turnout %>%
+  mutate(State_Name = gsub("_", " ", State_Name))
+```
+
+
+```{r Region_Wise_Turnout_2019, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Define the regional mapping
+north_states <- c("Jammu & Kashmir","Himachal Pradesh", "Punjab", "Uttarakhand", 
+                  "Haryana", "Uttar Pradesh")
+
+south_states <- c("Andhra Pradesh", "Karnataka", "Kerala", "Tamil Nadu", 
+                  "Telangana")
+
+east_states <- c("Bihar", "Jharkhand", "Odisha", "West Bengal", "Sikkim", 
+                 "Assam", "Arunachal Pradesh", "Meghalaya", "Manipur", 
+                 "Mizoram", "Nagaland", "Tripura")
+
+west_states <- c("Goa", "Gujarat", "Maharashtra", "Rajasthan")
+
+central_states <- c("Madhya Pradesh", "Chhattisgarh")
+
+# Assign states to regions
+State_turnout <- State_turnout %>%
+  mutate(Region = case_when(
+    State_Name %in% north_states ~ "North",
+    State_Name %in% south_states ~ "South",
+    State_Name %in% east_states ~ "East",
+    State_Name %in% west_states ~ "West",
+    State_Name %in% central_states ~ "Central",
+    TRUE ~ "UT"
+  ))
+
+# Aggregate turnout by region
+Region_turnout <- State_turnout %>%
+  group_by(Region) %>%
+  summarise(Avg_Turnout = mean(turnout, na.rm = TRUE))
+
+# Plot the region-wise turnout
+ggplot(Region_turnout, aes(x = Region, y = Avg_Turnout, fill = Region)) +
+  geom_col(show.legend = FALSE) +
+  labs(title = "Region-Wise Voter Turnout in 2019 Elections",
+       x = "Region",
+       y = "Average Turnout Percentage") +
+  theme_minimal()
+```
+
+
