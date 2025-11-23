@@ -1,13 +1,15 @@
-📘 README — Data Science for Social Scientists / Political Scientists (Spring 2025)
+📘 Data Science for Social Scientists / Political Scientists (Spring 2025)
 Taught by Prof. Anustubh Agnihotri (PhD, UC Berkeley)
 
 Teaching Fellow: Suchir Kalra
 
 As a teaching fellow, I introduced data science methods including visualisation, modelling, and regression to Political Science students that they could use for data-driven political science research projects. 
 
+P.S. This course relies heavily on SHRUG (https://www.devdatalab.org/shrug). To download the datasets used in the code, please head to https://www.devdatalab.org/shrug. If you are new to SHRUG and want to know more on how to use it, please visit: https://docs.devdatalab.org/
+
 🎯 Course Overview
 
-This repository contains materials, datasets, project resources, and coding tutorials from the course Data Science for Social Scientists, offered at Ashoka University in Spring 2025. Designed for undergraduate students in social sciences, the course introduces modern data science methods and computational tools for empirical public policy research.
+This repository contains materials, codes, and coding tutorials from the course Data Science for Social Scientists, offered at Ashoka University in Spring 2025. Designed for undergraduate students in social sciences, the course introduces modern data science methods and computational tools for empirical public policy research.
 
 The course expands students’ ability to work with complex data, build reproducible workflows, create compelling visualizations, and develop research that addresses real-world governance, social development, and political science questions.
 
